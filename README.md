@@ -59,7 +59,7 @@ void setup() {
   
   // Start NTP client
   timeClient.begin();
-  timeClient.setUpdateInterval(300); // 5 minutes
+  timeClient.setUpdateInterval(3600); // 1 hour
 }
 
 void loop() {
