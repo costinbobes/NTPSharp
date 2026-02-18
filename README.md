@@ -4,8 +4,8 @@ A fast, accurate time synchronization library for Arduino using NTP (Network Tim
 
 ## IMPORTANT NOTE
 Do not set the update interval too low. You will get better long-term stability and accuracy with an update interval of at least 30 min and ideally 2+ hours (1800-7200 seconds).
-An interval which is too low will cause the network latency to be significant in respect to the elapsed time and will cause the system to continuously overcorrect.
-Example: 30ms network jitter over 300s is 100ppm - which may be 10x higher than the actual drift of the clock.
+An interval which is too low will cause the network latency to be significant with respect to the elapsed time and will cause the system to continuously overcorrect.
+Example: 30 ms network jitter over 300 s is 100 ppm – which may be 10× higher than the actual drift of the clock.
 Furthermore, an interval which is too low may cause NTP servers to block such clients.
 
 ## Features
