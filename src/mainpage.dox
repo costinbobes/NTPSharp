@@ -1,0 +1,325 @@
+/**
+ * @mainpage NTPSharp Library
+ * 
+ * @section intro_sec Introduction
+ * 
+ * NTPSharp is a high-precision NTP (Network Time Protocol) time synchronization
+ * library designed for Arduino and Arduino-compatible platforms. It provides accurate time
+ * keeping with automatic local oscillator drift correction, making it ideal for IoT
+ * applications, logging systems, and devices requiring synchronized timestamps.
+ * 
+ * The library supports:
+ * - **ESP8266 and ESP32** microcontrollers
+ * - **Arduino boards** with WiFi or Ethernet shields
+ * - **Custom UDP implementations** for maximum flexibility
+ * 
+ * @section features_sec Key Features
+ * 
+ * @subsection feature_ntp NTP Synchronization
+ * Synchronizes with any NTP server (default: pool.ntp.org). The library handles:
+ * - NTP packet creation and parsing
+ * - Round-trip time (RTT) calculation
+ * - Timestamp extraction from NTP responses
+ * - Automatic leap-second handling (for year 2036 compatibility)
+ * 
+ * @subsection feature_drift Drift Correction
+ * Calculates and automatically compensates for local oscillator drift:
+ * - Measures drift from periodic NTP updates
+ * - Smooths drift values using exponential moving average
+ * - Applies offset compensation for precise long-term accuracy
+ * - Maintains drift accuracy even when NTP is temporarily unavailable
+ * 
+ * @subsection feature_smooth Gradual Time Adjustments
+ * - No backward time jumps (critical for event logging)
+ * - Gradual slowing of time when fast
+ * - Gradual speeding of time when slow
+ * - Instant correction only for very large offsets (> 1 hour default)
+ * - Fast catch-up mode for moderate offsets (1s - 1hr)
+ * 
+ * @subsection feature_fallback Fallback Operation
+ * - Maintains time using internal clock when NTP unavailable
+ * - Continues applying calculated drift during outages
+ * - Smooth transition back to sync when NTP recovers
+ * 
+ * @section quick_start Quick Start
+ * 
+ * ### Basic Setup (ESP8266/ESP32)
+ * 
+ * @code
+ * #include <ESP8266WiFi.h>
+ * #include <WiFiUdp.h>
+ * #include <NtpClient.h>
+ * 
+ * WiFiUDP ntpUDP;
+ * NtpClient timeClient(ntpUDP);
+ * 
+ * void setup() {
+ *   Serial.begin(115200);
+ *   
+ *   // Connect to WiFi
+ *   WiFi.begin("SSID", "PASSWORD");
+ *   while (WiFi.status() != WL_CONNECTED) {
+ *     delay(500);
+ *     Serial.print(".");
+ *   }
+ *   
+ *   // Initialize NTP client
+ *   timeClient.begin();
+ *   timeClient.setUpdateInterval(300); // Update every 5 minutes
+ * }
+ * 
+ * void loop() {
+ *   timeClient.update();
+ *   
+ *   if (timeClient.isSet()) {
+ *     Serial.println(timeClient.getFormattedTime());
+ *     
+ *     // Check clock health
+ *     Serial.print("Drift: ");
+ *     Serial.print(timeClient.getDrift());
+ *     Serial.println(" ppm");
+ *   }
+ *   
+ *   delay(5000);
+ * }
+ * @endcode
+ * 
+ * @section api_overview API Overview
+ * 
+ * The library provides a clean, intuitive API organized into functional groups:
+ * 
+ * @subsection api_init Initialization
+ * - NtpClient() - Constructor variants
+ * - begin() - Start the NTP client
+ * - end() - Stop the NTP client
+ * 
+ * @subsection api_time Time Retrieval
+ * - getTime() - Get current time in milliseconds
+ * - getLegacyTime() - Get time in seconds (legacy)
+ * - getFormattedTime() - Get time as ISO 8601 string
+ * - isSet() - Check if time is valid
+ * 
+ * @subsection api_sync Synchronization
+ * - update() - Main update function (call regularly)
+ * - forceUpdate() - Request immediate NTP sync
+ * - setUpdateInterval() - Set update frequency
+ * - setTime() - Manually set time
+ * 
+ * @subsection api_drift Drift Management
+ * - getDrift() - Get current drift in ppm
+ * - setLocalClockDrift() - Pre-compensate for known drift
+ * - setInstantOffsetCorrection() - Set instant correction threshold
+ * - setCatchUpCorrectionInterval() - Set catch-up duration
+ * 
+ * @subsection api_diag Diagnostics
+ * - getNTPAge() - Get time since last sync (seconds)
+ * - getLastClockOffset() - Get last measured offset
+ * - getLastNtpUpdateTime() - Get last received NTP timestamp
+ * - getLastNtpDelay() - Get last round-trip time to NTP server
+ * 
+ * See the @ref NtpClient class for complete documentation.
+ * 
+ * @section concepts State Machine
+ * 
+ * The library operates as a state machine with four states:
+ * 
+ * @subsection state_uninit UNINIT
+ * Library not yet initialized. Waiting for begin() to be called.
+ * 
+ * @subsection state_init INIT
+ * Initialization phase. Waiting for the first successful NTP response.
+ * Update attempts are retried with exponential backoff if no response.
+ * 
+ * @subsection state_synced SYNCED
+ * Normal operation. Time is valid and drift is being calculated.
+ * Regular NTP updates occur at the configured interval.
+ * Offset compensation is applied to minimize time drift.
+ * 
+ * @subsection state_catchup CATCHING_UP
+ * Fast correction mode. Entered when offset exceeds 1 second.
+ * The library applies a calculated drift to gradually reach the correct time
+ * within the configured catch-up interval (default: 5 minutes).
+ * 
+ * ### State Transitions
+ * 
+ * @code
+ * UNINIT
+ *   |
+ *   | begin()
+ *   v
+ * INIT
+ *   |
+ *   | (first NTP response)
+ *   v
+ * SYNCED <--+
+ *   |       |
+ *   | (offset > 1s)
+ *   v       |
+ * CATCHING_UP
+ *   |
+ *   | (catch-up interval complete)
+ *   +-------+
+ * @endcode
+ * 
+ * @section drift_theory Drift Theory
+ * 
+ * Local oscillators (crystal or RC oscillators) never run at exactly the correct frequency.
+ * They drift based on temperature, component tolerances, and aging.
+ * 
+ * ### Drift Calculation
+ * 
+ * After each NTP update, the library calculates how much the local clock drifted:
+ * 
+ * @code
+ * drift_ppm = (localElapsed - ntpElapsed) / ntpElapsed * 1,000,000
+ * @endcode
+ * 
+ * - **Positive drift** = local clock counted MORE milliseconds than actually elapsed
+ *   (clock is FAST)
+ * - **Negative drift** = local clock counted FEWER milliseconds than actually elapsed
+ *   (clock is SLOW)
+ * 
+ * ### Drift Application
+ * 
+ * To get real time, the library divides elapsed time by (1 + drift/1,000,000):
+ * 
+ * @code
+ * realTime = millisReading / (1 + drift_ppm / 1,000,000)
+ * @endcode
+ * 
+ * ### Example
+ * 
+ * If a device's oscillator runs 1000 ppm fast:
+ * - Real time passes: 1,000,000 ms
+ * - Local millis() reports: 1,001,000 ms (one extra millisecond per second)
+ * - Calculated drift: +1000 ppm
+ * - To convert local reading to real time: 1,001,000 / 1.001 ≈ 1,000,000 ms ✓
+ * 
+ * ### Smoothing and Filtering
+ * 
+ * Raw drift measurements are noisy due to network jitter and clock granularity.
+ * The library uses:
+ * 1. **Exponential Moving Average** - Smooth drift values over multiple updates
+ * 2. **Low-Pass Filter** - Smooth offset-based compensation
+ * 3. **Averaging Window** - Track changes over ~3 hour windows
+ * 
+ * This ensures drift corrections converge smoothly without oscillation.
+ * 
+ * @section time_accuracy Achieving Time Accuracy
+ * 
+ * @subsection accuracy_factors Factors Affecting Accuracy
+ * 
+ * - **Update Interval**: More frequent updates = more accurate drift tracking
+ * - **Oscillator Quality**: Higher-quality oscillators have lower, more stable drift
+ * - **Temperature Stability**: Fluctuating temperature causes drift variations
+ * - **Network Latency**: RTT measurement quality depends on network stability
+ * 
+ * @subsection accuracy_tips Tips for Best Results
+ * 
+ * 1. **Update regularly**: Use 5-15 minute intervals for IoT applications
+ * 2. **Stable environment**: Keep device away from temperature extremes
+ * 3. **Good NTP servers**: Use pool.ntp.org or geographically local servers
+ * 4. **Avoid time jumps**: Use setTime() only for initial setup
+ * 5. **Monitor diagnostics**: Check getNTPAge() and getLastClockOffset()
+ * 
+ * ### Typical Accuracy
+ * 
+ * - **After sync**: ±100 ms (depends on network and RTT)
+ * - **Between syncs**: ±5-50 ppm drift (depends on oscillator quality)
+ * - **With drift correction**: Within ±1 second over a week
+ * 
+ * @section logging Debug Logging
+ * 
+ * Enable debug output by defining NTP_LOG_LEVEL before including the header:
+ * 
+ * @code
+ * #define NTP_LOG_LEVEL NTP_LOG_DEBUG  // or INFO, ERROR, NONE
+ * #include <NtpClient.h>
+ * @endcode
+ * 
+ * Messages are printed to Serial. Example output:
+ * 
+ * @code
+ * [NTP-I] State INIT -> SYNCED
+ * [NTP-I] first sync, UTC time = 1609459200000
+ * [NTP-D] calculate drift: NTP elapsed=900000ms, local elapsed=900450 ms | net=450 ms over 900000 ms
+ * [NTP-D] smoothed drift = 500.00 ppm, offset compensation = -42.75 ppm
+ * [NTP-D] total clock drift = 457.25 ppm
+ * @endcode
+ * 
+ * @section examples Examples
+ * 
+ * The library includes working examples:
+ * - **BasicUsage**: Simple time display with ESP8266/ESP32
+ * - **AdvancedUsage**: ESP32 with WiFi reconnection handling
+ * - **DS3231Sync**: Seed time from a DS3231 RTC on boot, write NTP-corrected time back on each sync
+ * 
+ * See the `examples/` folder for complete source code.
+ * 
+ * @section compatibility Platform Compatibility
+ * 
+ * | Platform | Support | Notes |
+ * |----------|---------|-------|
+ * | ESP8266 | ✓ | Full support with built-in WiFi |
+ * | ESP32 | ✓ | Full support with WiFi/BLE |
+ * | Arduino + WiFi | ✓ | Requires WiFi shield |
+ * | Arduino + Ethernet | ✓ | Requires Ethernet shield |
+ * | Arduino Uno | ~ | Limited RAM; may not support logging |
+ * 
+ * @section performance Performance Characteristics
+ * 
+ * - **Memory (RAM)**: ~2 KB
+ * - **Memory (Flash)**: ~15-20 KB depending on features/logging
+ * - **Update Processing**: <10 ms
+ * - **Drift Calculation**: <5 ms
+ * - **CPU Impact**: Minimal; event-driven design
+ * 
+ * @section troubleshooting Troubleshooting
+ * 
+ * ### Time not synchronizing
+ * 1. Check WiFi/Ethernet connection
+ * 2. Enable logging: `#define NTP_LOG_LEVEL NTP_LOG_DEBUG`
+ * 3. Verify NTP server is reachable (e.g., ping pool.ntp.org)
+ * 4. Check UDP port (default 1337) is not blocked by firewall
+ * 5. Try alternative NTP server: `timeClient.setPoolServerName("ntp.ubuntu.com")`
+ * 
+ * ### High drift values (>1000 ppm)
+ * 1. Check oscillator quality or temperature stability
+ * 2. Pre-compensate with `setLocalClockDrift(knownDrift)`
+ * 3. Increase update frequency (more data = better averaging)
+ * 4. Verify NTP server responses are valid (check logs)
+ * 
+ * ### Time jumps backward
+ * This should not happen - the library explicitly prevents backward time jumps.
+ * Only gradual slowing down is applied. If observed:
+ * 1. Report the issue with debug logs
+ * 2. Check for manual setTime() calls in your code
+ * 3. Verify time only changes in getTime() calls
+ * 
+ * @section references References
+ * 
+ * - [NTP Protocol (RFC 5905)](https://tools.ietf.org/html/rfc5905)
+ * - [pool.ntp.org Project](https://www.pool.ntp.org/)
+ * - [Arduino Reference](https://www.arduino.cc/reference/)
+ * - [Oscillator Drift and Compensation](https://en.wikipedia.org/wiki/Clock_drift)
+ * 
+ * @section license License
+ * 
+ * This library is provided as-is for educational and commercial use.
+ * 
+ * @section contact Contact & Support
+ * 
+ * **Repository**: https://github.com/costinbobes/NTPSharp
+ * 
+ * **Issues & Feature Requests**: GitHub Issues
+ * 
+ * ---
+ * 
+ * Last Updated: 2026
+ * 
+ * @see NtpClient
+ * @see NtpTime
+ * @see NtpState
+ */
+
+// This file is just for Doxygen documentation and doesn't generate any code.

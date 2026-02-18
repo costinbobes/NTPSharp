@@ -1,0 +1,9 @@
+# Visual Studio
+.vs/
+
+# Build output
+doc/
+
+# OS files
+Thumbs.db
+.DS_Store

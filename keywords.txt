@@ -1,0 +1,45 @@
+#######################################
+# Syntax Coloring Map for NTPSharp
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+NtpClient	KEYWORD1
+NtpTime	KEYWORD1
+NtpState	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+end	KEYWORD2
+update	KEYWORD2
+forceUpdate	KEYWORD2
+getTime	KEYWORD2
+getLegacyTime	KEYWORD2
+getFormattedTime	KEYWORD2
+isSet	KEYWORD2
+getDrift	KEYWORD2
+setLocalClockDrift	KEYWORD2
+setTime	KEYWORD2
+setUpdateInterval	KEYWORD2
+setUpdateCallback	KEYWORD2
+setPoolServerName	KEYWORD2
+setInstantOffsetCorrection	KEYWORD2
+setCatchUpCorrectionInterval	KEYWORD2
+getNTPAge	KEYWORD2
+getLastClockOffset	KEYWORD2
+getLastNtpUpdateTime	KEYWORD2
+getLastNtpDelay	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+NTP_LOG_NONE	LITERAL1
+NTP_LOG_ERROR	LITERAL1
+NTP_LOG_INFO	LITERAL1
+NTP_LOG_DEBUG	LITERAL1
