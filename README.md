@@ -3,10 +3,21 @@
 A fast, accurate time synchronization library for Arduino using NTP (Network Time Protocol) with automatic local clock drift correction.
 
 ## IMPORTANT NOTE
-Do not set the update interval too low. You will get better long-term stability and accuracy with an update interval of at least 30 min and ideally 2+ hours (1800-7200 seconds).
+
+Do not set the update interval too low. You will get better long-term stability and accuracy with an update interval of at least 30 min (1800 seconds) and ideally 2+ hours (7200+ seconds).
+A good starting point is 2 hours (7200 seconds) and then adjust based on observed drift and network conditions, although you shouldn't have to - the library will automatically calculate and compensate for drift over time.
 An interval which is too low will cause the network latency to be significant with respect to the elapsed time and will cause the system to continuously overcorrect.
 Example: 30 ms network jitter over 300 s is 100 ppm – which may be 10× higher than the actual drift of the clock.
 Furthermore, an interval which is too low may cause NTP servers to block such clients.
+
+## Note on Arduino Uno and similar 8-bit AVR boards
+
+While this library can be used on Arduino Uno and similar 8-bit AVR boards, it is not recommended due to the limited resources of these platforms. The library's features, such as drift correction and comprehensive logging, may consume more memory and processing power than what these boards can efficiently handle.
+These boards have a millis() function which drifts significantly due to architectural limitations.
+The internal clock ticks at 16MHz and the derived clock is 1.024ms instead of 1ms; the system applies "leap milliseconds" to keep it somewhat in sync.
+Many times cheap boards use piezo resonators with a drift of up to 2000 ppm (0.2%) or more, which means they can drift by several minutes per day.
+The library will still work, but you may experience significant time drift and less accurate synchronization. For better performance and accuracy, consider using more capable boards like the ESP8266 or ESP32, which have more stable clocks and can handle the library's features more effectively.
+
 
 ## Features
 
@@ -69,7 +80,7 @@ void loop() {
     Serial.println(timeClient.getFormattedTime());
   }
   
-  delay(5000);
+  delay(1000);
 }
 ```
 
@@ -98,7 +109,7 @@ void loop() {
   timeClient.update();
   
   Serial.println(timeClient.getFormattedTime());
-  delay(10000);
+  delay(1000);
 }
 ```
 

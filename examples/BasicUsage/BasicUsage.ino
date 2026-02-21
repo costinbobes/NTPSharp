@@ -54,8 +54,8 @@ void setup() {
   // Set NTP update callback
   ntpClient.setUpdateCallback(onNtpUpdate);
   
-  // Optional: Set update interval (default is 15 minutes)
-  ntpClient.setUpdateInterval(600); // Update every 10 minutes
+  // Optional: Set update interval
+  ntpClient.setUpdateInterval(900); // 15 minutes - you should *not* set this too low in production, this is just for testing
   
   // Initialize NTP client
   ntpClient.begin();

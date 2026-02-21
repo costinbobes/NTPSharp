@@ -123,7 +123,7 @@ private:
 	/// @{
 	static constexpr uint32_t NTP_MINIMUM_UPDATE_INTERVAL = 60000; ///< Minimum update interval (1 minute)
 	static constexpr uint32_t NTP_MAXIMUM_UPDATE_INTERVAL = 86400000; ///< Maximum update interval (1 day)
-	static constexpr uint32_t NTP_DEFAULT_UPDATE_INTERVAL = 900000; ///< Default update interval (15 minutes)
+	static constexpr uint32_t NTP_DEFAULT_UPDATE_INTERVAL = 3600000; ///< Default update interval (1 hour)
 	static constexpr uint32_t NTP_ROLLOVER_PIVOT = 3976214400UL; ///< Rollover pivot (Jan 1, 2026; valid until Feb 7, 2036)
 	static constexpr uint64_t YEAR1970STAMP_MS = 2208988800000ULL; ///< Unix epoch offset in milliseconds
 	static constexpr uint8_t NTP_PACKET_SIZE = 48; ///< Standard NTP packet size

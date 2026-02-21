@@ -124,7 +124,7 @@ void setup() {
 
   // Configure NTP client
   ntpClient.setUpdateCallback(onNtpUpdate);
-  ntpClient.setUpdateInterval(900); // Sync every 15 minutes
+  ntpClient.setUpdateInterval(900); // 15 minutes - you should *not* set this too low in production, this is just for testing
   ntpClient.begin();
 
   Serial.println("NTP client initialized.\n");

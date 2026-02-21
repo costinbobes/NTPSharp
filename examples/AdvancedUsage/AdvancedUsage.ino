@@ -63,7 +63,7 @@ void setup() {
 
   connectWifi();
 
-  ntpClient.setUpdateInterval(900); // 15 minutes in seconds
+  ntpClient.setUpdateInterval(900); // 15 minutes - you should *not* set this too low in production, this is just for testing
   ntpClient.setUpdateCallback(ntpCallback);
   ntpClient.begin();
 }
@@ -74,7 +74,7 @@ void loop() {
 
   // Print time periodically for debug
   static uint32_t lastPrint = 0;
-  if (millis() - lastPrint > 10000) {
+  if (millis() - lastPrint > 1000) {
     lastPrint = millis();
     Serial.printf("Current time: %s  Drift: %.2f ppm\n", ntpClient.getFormattedTime(), ntpClient.getDrift());
   }
